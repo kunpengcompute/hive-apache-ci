@@ -1,29 +1,30 @@
-= Configuration file =
+ReadMe
+------
 
-Configuration file is JSON formated, example:
+This is a simple script to run Hive tests in parallel on two machines,
+this is borrowed and modified from Hive's ptest sripts, it is currently
+rewrite for running Hive Apache tests on aarch64: https://builds.apache.org/view/H-L/view/Hive/job/Hive-linux-ARM-trunk/
+
+The configuration file for this script is JSON formated, example:
 
 {
   "qfile_hosts": [
-  ["username@hostname1", 4],
-  ["username@hostname2", 8],
-  ["username@hostname3", 8]
+  ["jenkins@server1", 1]
   ],
 
   "other_hosts": [
-    ["username@hostname4", 5],
-    ["username@hostname5", 8]
+  ["jenkins@server2", 1]
   ],
-
-  "master_base_path": "${{HOME}}/hivetests",
-  "host_base_path": "/data/users/hivetests",
-  "java_home": "/opt/jdk"
+  "master_base_path": "/home/jenkins/ptest-workdir/hive",
+  "host_base_path": "/home/jenkins/ptest-workdir/data/users/hivetests",
+  "java_home": "/usr/lib/jvm/java-8-openjdk-arm64",
+  "mvn_path": "/home/jenkins/tools/maven/latest3/",
+  "mvn_local_repo": "/home/jenkins/ptest-workdir/.m2/hiverepository/"
 }
 
 == qfile_hosts ==
-List of hosts that should run TestCliDriver and TestNegativeCliDriver test
-cases.  Number following the host name is number of simultaneous tests that
-should be run on this host, you should probably set it near number of cores that
-host has.
+List of hosts that should run TestCliDriver test. Currently we support only one
+host and one thread on that host.
 
 == other_hosts ==
 List of hosts that should run all other test cases.  Number has the same meaning

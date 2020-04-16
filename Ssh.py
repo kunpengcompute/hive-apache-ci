@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 from threading import Thread
 from Queue import Queue
 
@@ -54,7 +55,8 @@ class SSHConnection():
         # Don't use single quotes in `cmd`, this will break and end badly.
         cmd = cmd.format(host = self.hostname)
         cmd = self.prefix(cmd)
-        print(self.hostname + ' =>')
+        now = datetime.datetime.now()
+        print(now.strftime('%Y-%m-%d %H:%M:%S') + ' ' + self.hostname + ' =>')
         if vewy_quiet:
             # Be vewy, vewy quiet, I'm hunting wabbits.
             print('[command hidden]\n')
@@ -62,6 +64,7 @@ class SSHConnection():
         else:
             print(cmd + '\n')
         cmd = '''ssh '{0}' "bash -c '{1}'"'''.format(self.host, cmd)
+        print(cmd + '\n')
         try:
             return Process.run(cmd, quiet, abandon_output)
         except Exception as e:

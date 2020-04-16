@@ -168,7 +168,7 @@ def run_itests():
     cmds = []
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest.excludes.additional=\"**/TestCliDriver.java"')
+                '"org.apache.hive:hive-it-qfile" -Dtest.excludes.additional="**/TestCliDriver.java","**/DummyCliDriver.java"')
     cmds.append(mvn_test + ' -pl '
                 '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver')
     for cmd in cmds:

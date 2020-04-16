@@ -157,14 +157,17 @@ def run_itests():
     # Runs org.apache.hive:hive-it-qfile testcases.
     print('\n-- Running itests tests on itests hosts\n')
 
+    # Delete .q file that does not run on this host
+    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientpositive')
+    cmd_delete = 'rm authorization_9.q authorization_show_grant.q ivyDownload.q'
+    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
     qfile_set.cd(host_code_path + '/itests')
     cmds = []
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-qfile\' -Dtest.excludes.additional=\'**/TestCliDriver.java\'')
+                '"org.apache.hive:hive-it-qfile" -Dtest.excludes.additional=\"**/TestCliDriver.java"')
     cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-qfile\' -Dtest=TestCliDriver '
-                '-Dqfile_regex=\'\\b((?!authorization_9|authorization_show_grant|ivyDownload)\w)+\b\'')
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver')
     for cmd in cmds:
         qfile_set.run(cmd, quiet = True, warn_only = True)
 
@@ -173,16 +176,14 @@ def run_unit_tests():
 
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds = []
-    cmds.append(mvn_test + ' -pl \'org.apache.hive:hive-exec\''
-                '-Dtest.excludes.additional=\'**/*SQL11*.java\',\'**/TestHiveRemote.java\'')
+    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-exec"')
     cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-exec\' -Dtest=TestSQL11ReservedKeyWordsNegative')
+                '"org.apache.hive:hive-exec" -Dtest=TestSQL11ReservedKeyWordsNegative')
     cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-exec\' -Dtest=TestHiveRemote')
+                '"org.apache.hive:hive-exec" -Dtest=TestHiveRemote')
+    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-llap-server"')
     cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-llap-server\'')
-    cmds.append(mvn_test + ' -pl '
-                '\'org.apache.hive.hcatalog:hive-hcatalog-pig-adapter\'')
+                '"org.apache.hive.hcatalog:hive-hcatalog-pig-adapter"')
     cmds.append(mvn_test + ' -pl '
                 '\!\'org.apache.hive:hive-exec\',\!\'org.apache.hive:hive-llap-server\',\!\'org.apache.hive.hcatalog:hive-hcatalog-pig-adapter\'')
     other_set.cd(host_code_path)
@@ -193,16 +194,14 @@ def run_unit_tests():
     other_set.cd(host_code_path + '/itests')
     cmds_1 = []
     cmds_1.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-qfile\' -Dtest=TestCliDriver '
-                '-Dqfile=\'authorization_9.q,authorization_show_grant.q,ivyDownload.q\'')
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver '
+                '-Dqfile="authorization_9.q,authorization_show_grant.q,ivyDownload.q"')
     cmds_1.append(mvn_test + ' -pl '
-                '\\!\'org.apache.hive:hive-it-unit\',\\!\'org.apache.hive:hive-it-qfile\'')
+                '\\!"org.apache.hive:hive-it-unit",\\!"org.apache.hive:hive-it-qfile"')
     cmds_1.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-unit\' -Dtest.excludes.additional=\'**/*ReplWithJsonMessage*.java\',\'**/TrustDomainAuthentication.java\'')
-    cmds_1.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-unit\' -Dtest=TestReplWithJsonMessageFormat')
-    cmds_1.append(mvn_test + ' -pl '
-                '\'org.apache.hive:hive-it-unit\' -Dtest=TrustDomainAuthentication')
+                '"org.apache.hive:hive-it-unit" -Dtest.excludes.additional="**/*ReplWithJsonMessage*.java","**/TrustDomainAuthentication.java"')
+    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TestReplWithJsonMessageFormat')
+    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TrustDomainAuthentication')
     for cmd in cmds_1:
         other_set.run(cmd, quiet = True, warn_only = True)
 
@@ -234,12 +233,11 @@ def cmd_run_tests():
 def cmd_test():
     cmd_prepare()
 
-    if args.singlehost==False:
-      local.cd(master_base_path + '/trunk')
-      local.run('chmod -R 777 *');
-      local.run('rm -rf "' + master_base_path + '/templogs/"')
-      local.run('mkdir -p "' + master_base_path + '/templogs/"')
-      cmd_run_tests()
+    local.cd(master_base_path + '/trunk')
+    local.run('chmod -R 777 *');
+    local.run('rm -rf "' + master_base_path + '/templogs/"')
+    local.run('mkdir -p "' + master_base_path + '/templogs/"')
+    cmd_run_tests()
 
 def cmd_stop():
     stop_tests()
@@ -273,4 +271,3 @@ elif args.stop:
     cmd_stop()
 else:
   parser.print_help()
-

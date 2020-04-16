@@ -159,7 +159,10 @@ def run_itests():
 
     # Delete .q file that does not run on this host
     qfile_set.cd(host_code_path + '/ql/src/test/queries/clientpositive')
-    cmd_delete = 'rm authorization_9.q authorization_show_grant.q ivyDownload.q'
+    cmd_delete = 'rm authorization_9.q authorization_show_grant.q ivyDownload.q sysdb.q sysdb_schq.q vector_orc_nested_column_pruning.q'
+    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
+    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientnegative')
+    cmd_delete = 'rm strict_pruning.q'
     qfile_set.run(cmd_delete, quiet = True, warn_only = True)
     qfile_set.cd(host_code_path + '/itests')
     cmds = []
@@ -197,6 +200,18 @@ def run_unit_tests():
                 '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver '
                 '-Dqfile="authorization_9.q,authorization_show_grant.q,ivyDownload.q"')
     cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="sysdb.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="sysdb_schq.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="vector_orc_nested_column_pruning.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestNegativeCliDriver '
+                '-Dqfile="strict_pruning.q"')
+    cmds_1.append(mvn_test + ' -pl '
                 '\\!"org.apache.hive:hive-it-unit",\\!"org.apache.hive:hive-it-qfile"')
     cmds_1.append(mvn_test + ' -pl '
                 '"org.apache.hive:hive-it-unit" -Dtest.excludes.additional="**/*ReplWithJsonMessage*.java","**/TrustDomainAuthentication.java"')
@@ -204,7 +219,7 @@ def run_unit_tests():
     cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TrustDomainAuthentication')
     for cmd in cmds_1:
         other_set.run(cmd, quiet = True, warn_only = True)
-
+    
 def stop_tests():
     # Brutally stops tests on all hosts, something more subtle would be nice and
     # would allow the same user to run this script multiple times

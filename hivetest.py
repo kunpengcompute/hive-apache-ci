@@ -138,9 +138,9 @@ def build_hive(remote_build=False):
         print('\n-- Building Hive on all machines\n')
         remote_set.cd(host_code_path)
         cmd = 'mvn clean install -e -B -Pdist -Dtar -DskipTests -Dmaven.javadoc.skip -Dmaven.repo.local=' + mvn_local_repo
-        remote_set.run(cmd, quiet = True, warn_only = True)
+        remote_set.run(cmd quiet, = True, warn_only = True)
         remote_set.cd(code_path + '/itests')
-        remote_set.run(cmd, quiet = True, warn_only = True)
+        remote_set.run(cmd,  quiet = True, warn_only = True)
     else:
         print('\n-- Building Hive\n')
         local.cd(code_path)
@@ -165,13 +165,26 @@ def run_itests():
     # Runs org.apache.hive:hive-it-qfile testcases.
     print('\n-- Running itests tests on itests hosts\n')
 
+    # Delete .q file that does not run on this host
+    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientpositive')
+    cmd_delete = 'rm authorization_9.q authorization_show_grant.q ivyDownload.q sysdb.q sysdb_schq.q vector_orc_nested_column_pruning.q'
+    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
+    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientnegative')
+    cmd_delete = 'rm strict_pruning.q'
+    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
     qfile_set.cd(host_code_path + '/itests')
     cmds = []
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestEncryptedHDFSCliDriver -Dqfile=encryption_insert_partition_dynamic.q')
+                '"org.apache.hive:hive-it-qfile"')
+    cmds.append(mvn_test + ' -pl '
+                '\\!"org.apache.hive:hive-it-unit",\\!"org.apache.hive:hive-it-qfile"')
     for cmd in cmds:
         qfile_set.run(cmd, quiet = True, warn_only = True)
+    cmds.append(mvn_test + ' -pl '
+                '\!\'org.apache.hive:hive-exec\',\!\'org.apache.hive:hive-llap-server\',\!\'org.apache.hive.hcatalog:hive-hcatalog-pig-adapter\'')
+    qfile_set.cd(host_code_path)
+    qfile_set.run(cmds[-1], quiet = True, warn_only = True)
     collect_reports(qfile_set)
 
 def run_unit_tests():
@@ -179,11 +192,44 @@ def run_unit_tests():
 
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds = []
-    cmds.append(mvn_test + '-Dtest=TestMetastoreConf')
+    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-exec"')
+    cmds.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-exec" -Dtest=TestSQL11ReservedKeyWordsNegative')
+    cmds.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-exec" -Dtest=TestHiveRemote')
+    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-llap-server"')
+    cmds.append(mvn_test + ' -pl '
+                '"org.apache.hive.hcatalog:hive-hcatalog-pig-adapter"')
     other_set.cd(host_code_path)
     # See comment about quiet option in run_tests.
     for cmd in cmds:
         other_set.run(cmd, quiet = True, warn_only = True)
+    # Run the rest of itests
+    other_set.cd(host_code_path + '/itests')
+    cmds_1 = []
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver '
+                '-Dqfile="authorization_9.q,authorization_show_grant.q,ivyDownload.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="sysdb.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="sysdb_schq.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
+                '-Dqfile="vector_orc_nested_column_pruning.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestNegativeCliDriver '
+                '-Dqfile="strict_pruning.q"')
+    cmds_1.append(mvn_test + ' -pl '
+                '"org.apache.hive:hive-it-unit" -Dtest.excludes.additional="**/*ReplWithJsonMessage*.java","**/TrustDomainAuthentication.java"')
+    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TestReplWithJsonMessageFormat')
+    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TrustDomainAuthentication')
+    for cmd in cmds_1:
+        other_set.run(cmd, quiet = True, warn_only = True)
+    other_set.run('rm ' + host_code_path + '/ql/target/sufire-reports/*TestSQL11ReservedKeyWordsNegativeParametrized.xml', quiet = True, warn_only = True)
+    other_set.run('rm ' + host_code_path + '/ql/target/sufire-reports/*TestSQL11ReservedKeyWordsNegativeMisc.xml', quiet = True, warn_only = True)
     collect_reports(other_set)
 
 def stop_tests():

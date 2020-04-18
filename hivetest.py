@@ -87,8 +87,8 @@ def read_conf(config_file):
         master_base_path += '-' + suffix
         host_base_path  += '-' + suffix
 
-    code_path = master_base_path + '/trunk'
-    host_code_path = host_base_path + '/trunk-{host}'
+    code_path = master_base_path + '/hive'
+    host_code_path = host_base_path + '/hive-{host}'
 
     # Setup of needed environmental variables and paths
 
@@ -133,13 +133,21 @@ def copy_local_hive():
     local.run('cp -rf * "{0}"'.format(code_path))
     local.cd(code_path)
 
-def build_hive():
-    print('\n-- Building Hive\n')
-    local.cd(code_path)
-    cmd = 'mvn clean install -e -B -Pdist -Dtar -DskipTests -Dmaven.javadoc.skip -Dmaven.repo.local=' + mvn_local_repo
-    local.run(cmd)
-    local.cd(code_path + '/itests')
-    local.run(cmd)
+def build_hive(remote_build=False):
+    if remote_build:
+        print('\n-- Building Hive on all machines\n')
+        remote_set.cd(host_code_path)
+        cmd = 'mvn clean install -e -B -Pdist -Dtar -DskipTests -Dmaven.javadoc.skip -Dmaven.repo.local=' + mvn_local_repo
+        remote_set.run(cmd, quiet = True, warn_only = True)
+        remote_set.cd(code_path + '/itests')
+        remote_set.run(cmd, quiet = True, warn_only = True)
+    else:
+        print('\n-- Building Hive\n')
+        local.cd(code_path)
+        cmd = 'mvn clean install -e -B -Pdist -Dtar -DskipTests -Dmaven.javadoc.skip -Dmaven.repo.local=' + mvn_local_repo
+        local.run(cmd)
+        local.cd(code_path + '/itests')
+        local.run(cmd)
 
 def propagate_hive():
     # Expects master_base_path to be available on all test nodes in the same
@@ -157,69 +165,27 @@ def run_itests():
     # Runs org.apache.hive:hive-it-qfile testcases.
     print('\n-- Running itests tests on itests hosts\n')
 
-    # Delete .q file that does not run on this host
-    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientpositive')
-    cmd_delete = 'rm authorization_9.q authorization_show_grant.q ivyDownload.q sysdb.q sysdb_schq.q vector_orc_nested_column_pruning.q'
-    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
-    qfile_set.cd(host_code_path + '/ql/src/test/queries/clientnegative')
-    cmd_delete = 'rm strict_pruning.q'
-    qfile_set.run(cmd_delete, quiet = True, warn_only = True)
     qfile_set.cd(host_code_path + '/itests')
     cmds = []
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest.excludes.additional="**/TestCliDriver.java","**/DummyCliDriver.java"')
-    cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver')
+                '"org.apache.hive:hive-it-qfile" -Dtest=TestEncryptedHDFSCliDriver -Dqfile=encryption_insert_partition_dynamic.q')
     for cmd in cmds:
         qfile_set.run(cmd, quiet = True, warn_only = True)
+    collect_reports(qfile_set)
 
 def run_unit_tests():
     # Runs other tests on workers.
 
     mvn_test = 'mvn test -fn -B -Dmaven.repo.local=' + mvn_local_repo 
     cmds = []
-    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-exec"')
-    cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-exec" -Dtest=TestSQL11ReservedKeyWordsNegative')
-    cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-exec" -Dtest=TestHiveRemote')
-    cmds.append(mvn_test + ' -pl "org.apache.hive:hive-llap-server"')
-    cmds.append(mvn_test + ' -pl '
-                '"org.apache.hive.hcatalog:hive-hcatalog-pig-adapter"')
-    cmds.append(mvn_test + ' -pl '
-                '\!\'org.apache.hive:hive-exec\',\!\'org.apache.hive:hive-llap-server\',\!\'org.apache.hive.hcatalog:hive-hcatalog-pig-adapter\'')
+    cmds.append(mvn_test + '-Dtest=TestMetastoreConf')
     other_set.cd(host_code_path)
     # See comment about quiet option in run_tests.
     for cmd in cmds:
         other_set.run(cmd, quiet = True, warn_only = True)
-    # Run the rest of itests
-    other_set.cd(host_code_path + '/itests')
-    cmds_1 = []
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestCliDriver '
-                '-Dqfile="authorization_9.q,authorization_show_grant.q,ivyDownload.q"')
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
-                '-Dqfile="sysdb.q"')
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
-                '-Dqfile="sysdb_schq.q"')
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestMiniLlapLocalCliDriver '
-                '-Dqfile="vector_orc_nested_column_pruning.q"')
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-qfile" -Dtest=TestNegativeCliDriver '
-                '-Dqfile="strict_pruning.q"')
-    cmds_1.append(mvn_test + ' -pl '
-                '\\!"org.apache.hive:hive-it-unit",\\!"org.apache.hive:hive-it-qfile"')
-    cmds_1.append(mvn_test + ' -pl '
-                '"org.apache.hive:hive-it-unit" -Dtest.excludes.additional="**/*ReplWithJsonMessage*.java","**/TrustDomainAuthentication.java"')
-    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TestReplWithJsonMessageFormat')
-    cmds_1.append(mvn_test + ' -pl "org.apache.hive:hive-it-unit" -Dtest=TrustDomainAuthentication')
-    for cmd in cmds_1:
-        other_set.run(cmd, quiet = True, warn_only = True)
-    
+    collect_reports(other_set)
+
 def stop_tests():
     # Brutally stops tests on all hosts, something more subtle would be nice and
     # would allow the same user to run this script multiple times
@@ -235,9 +201,26 @@ def cmd_prepare():
     else :
       get_clean_hive()
 
+    collect_reports(local, cleanup=True)
     build_hive()
     propagate_hive()
+    build_hive(remote_build=True)
 
+def collect_reports(hosts, local_host=False, cleanup=False):
+    if cleanup:
+        result_dir = '/home/jenkins/ptest-workdir/data/test_results/'
+        hosts.run('rm -rf ' + result_dir + '*')
+    elif not local_host:
+        result_dir = '/home/jenkins/ptest-workdir/data/test_results/'
+        for host in hosts:
+            host.cd(host_base_path + '/hive-' + host.hostname)
+            host.run('mkdir -p ' + result_dir + host.hostname)
+            host.run('find ./  -name "TEST*.xml" -exec cp {} ' + result_dir + host.hostname + ' \;', format_host=False)
+    else:
+        result_dir = '/home/jenkins/jenkins-slave/workspace/Hive-linux-ARM-trunk/'
+        hosts.run('rm -rf ' + result_dir + 'test-results')
+        hosts.run('cp -r /home/jenkins/ptest-workdir/data/test_results ' + result_dir)     
+        
 def cmd_run_tests():
 
     t = Thread(target = run_unit_tests)
@@ -248,11 +231,11 @@ def cmd_run_tests():
 def cmd_test():
     cmd_prepare()
 
-    local.cd(master_base_path + '/trunk')
+    local.cd(master_base_path + '/hive')
     local.run('chmod -R 777 *');
-    local.run('rm -rf "' + master_base_path + '/templogs/"')
-    local.run('mkdir -p "' + master_base_path + '/templogs/"')
     cmd_run_tests()
+    
+    collect_reports(local, local_host=True)
 
 def cmd_stop():
     stop_tests()

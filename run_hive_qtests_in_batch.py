@@ -91,7 +91,7 @@ if __name__ == "__main__":
         os.system(cmd)
         time.sleep(5)
         post_cmd1 = 'mv ' + test_dir + '/itests/qtest/target/surefire-reports/TEST-org.apache.hadoop.hive.cli.TestMiniLlapLocalCliDriver.xml '
-        post_cmd2 = 'mv ' + test_dir + '/itests/qtest/target/surefire-reports/TEST-org.apache.hadoop.hive.cli.TestMiniLlapLocalCliDriver.xml-' + str(i)
+        post_cmd2 = test_dir + '/itests/qtest/target/surefire-reports/TEST-org.apache.hadoop.hive.cli.TestMiniLlapLocalCliDriver.xml-' + str(i)
         os.system(post_cmd1 + post_cmd2)
         time.sleep(5)
     

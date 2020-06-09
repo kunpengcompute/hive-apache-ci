@@ -77,8 +77,6 @@ if __name__ == "__main__":
     if len(valid_q_files) % batch_size != 0:
         rounds += 1
 
-    os.system('cd ' + test_dir + '/itests/qtest/ && mvn clean')
-
     for i in range(rounds):
         cmd1 = 'cd ' + test_dir + '/itests/qtest/'
         cmd2 = 'mvn test -B -Dtest=TestMiniLlapLocalCliDriver -Dmaven.repo.local=' + maven_repo + ' -Dsurefire.rerunFailingTestsCount=3 -Dqfile='
